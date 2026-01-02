@@ -25,4 +25,4 @@ Database Security Group
 
 
 Instance Security Group
-![](/armageddon-instance-sg.png)
+![](/armageddon-db-sg2.png)
