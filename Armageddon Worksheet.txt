@@ -1,0 +1,131 @@
+Armageddon Worksheet
+
+armageddon-vpc - gateway endpoint s3.
+Subnet Name: Public 1 - Private 1
+
+Instance Name: instance lab-mysql
+
+Database: instance lab-mysq
+
+CIDR: 10.180.0.0/16
+
+Security groups: sg-ec2-lab: armageddon-public-subnet - sg-ec2-lab for TCP 3306: armageddon-db
+
+
+Create a private vpc
+
+Create security groups:
+-	sg-ec2-lab: armageddon-public-sg > HTTP > SSH from My IP <>
+-	sg-ec2-lab for TCP 3306: armageddon-db-sg: <armageddon-public-subnet>
+
+
+create database:
+-	Aurora Database: lab-MySQL > full configuration > MySQL > MySQL 8.0.43 > free tier > single az > admin (username) >self managed > easy password until we create secrets manger configuration (DawgsRDSPass123) > General purpose > Not connecting to instance yet (there isn't one) > public access no > Not creating a database sg > choose existing sg > us-east-1 >Port 3306 > Tag
+-	Note: Has to be at least 2 AZs to create Aurora MySQL Database Databases are managed
+
+create instance:
+-	name: lab-ec2-app
+-	key pair: armageddon-lab-1
+-	Security group: armageddon-public-sg
+-	use Armageddon user_script.sh copy raw > Paste in user data
+-	Create Instance
+
+
+secrets manager: 
+-	credentials for Amazon RDS Database
+-	Credentials un: admin pw: DawgsRDSPass123
+-	Whatever name you have for the secret name it must be in the script. Default is <"lab/rds/mysql">
+-	Description: Access credentials for MySQL rds database
+
+
+Create IAM role for instance to access database:
+-	Custom Trust Policy
+
+
+
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSpecificSecret",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:lab/rds/mysql*"
+    }
+  ]
+}
+```
+
+This policy gave an error of missing principal and role trust policy Syntax Error Resource
+
+```
+ 
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    },
+    {
+      "Sid": "ReadSpecificSecret",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:lab/rds/mysql*"
+    }
+  ]
+}
+```
+
+We had permissions for the role but no principal. Therefore the policy was incomplete.
+
+Also noticed in TF jsonencode function the policies were different...
+
+Add a Principal element to the policy.
+
+Role Trust policies apply to the role that they are attached to. You cannot specify a resource. Remove the Resource or NotResource element. 
+
+Chose a broad policy with read and write permissions and changed the permissions in the policy to make them more inline. Could have just created a policy and attached to Role so the EC2 can assume the role...
+Go to Polciy > Create Policy > Go to JSON and paste Theo code.
+
+```
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSpecificSecret",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": "arn:aws:secretsmanager:<REGION>:<ACCOUNT_ID>:secret:lab/rds/mysql*"
+    }
+  ]
+}
+```
+Change your region and account number
+
+Go to create role > make it for ec2 > name it > the search your policy > 'secrets_manger_get_secret' > 
+
+So after we make the policy we select the policy after we create the role.
+
+Source: <https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_resource-policies.html>
+
+<https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html#Principal_specifying>
+
+As we forgot the enable public IP on instance one we then created a second instance to attach the role.
+
+Couldn't connect to the Database through the instance with init. now we troubleshoot.
+0 connections to database. What's the issue?
+
+Go to IAM and create
+
+
+
+Found we needed to make ec2 connection to with database.
+
+
