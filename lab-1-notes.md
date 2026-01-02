@@ -21,8 +21,8 @@ Source:
 This policy allows the action `secretsmanager:GetSecretValue` on a specific secret in AWS Secrets Manager. The resource ARN specifies a secret located in a particular region and account, with a name that starts with `lab/rds/mysql`.
 
 Database Security Group
+
 ![](/armageddon-db-sg.png)
 
 
-Instance Security Group
 ![](/armageddon-db-sg2.png)
